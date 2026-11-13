@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="id"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Prototipe Pinjam Ruang Kampus</title>
+<style>
+:root{--bg:#f3f6f8;--card:#fff;--ink:#17252f;--mut:#5b6b76;--line:#cfd9df;--ac:#0f7a7a;--acink:#fff;--bad:#b3261e;--badbg:#fdeceb;--ok:#1b6e3c;--okbg:#e6f4ea;--warn:#8a5a00;--warnbg:#fff4d6;color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#10181d;--card:#18232a;--ink:#e6eef2;--mut:#9fb0ba;--line:#2c3c46;--ac:#4fc3c3;--acink:#062b2b;--bad:#ff9a92;--badbg:#3a1d1b;--ok:#8fd9a8;--okbg:#17301f;--warn:#f2c76b;--warnbg:#33290f;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#10181d;--card:#18232a;--ink:#e6eef2;--mut:#9fb0ba;--line:#2c3c46;--ac:#4fc3c3;--acink:#062b2b;--bad:#ff9a92;--badbg:#3a1d1b;--ok:#8fd9a8;--okbg:#17301f;--warn:#f2c76b;--warnbg:#33290f;color-scheme:dark}
+*{box-sizing:border-box}html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 "Segoe UI",system-ui,-apple-system,Roboto,Arial,sans-serif}
+header{background:var(--card);border-bottom:1px solid var(--line);padding:12px 16px;display:flex;flex-wrap:wrap;gap:8px 20px;align-items:center}
+header b{font-size:18px}nav{display:flex;gap:4px;margin-left:auto}
+nav button{background:none;border:0;border-bottom:3px solid transparent;color:var(--mut);font:inherit;padding:6px 10px;cursor:pointer}
+nav button.on{color:var(--ac);border-color:var(--ac);font-weight:600}
+main{max-width:640px;margin:0 auto;padding:20px 16px 40px}
+h1{font-size:22px;margin:0 0 4px}p.sub{margin:0 0 16px;color:var(--mut)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px;margin-bottom:14px}
+label{display:block;font-weight:600;margin:12px 0 4px;font-size:14px}
+input,select,textarea{width:100%;padding:10px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink);font:inherit}
+input[aria-invalid=true],select[aria-invalid=true]{border-color:var(--bad)}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.err{color:var(--bad);font-size:13px;margin-top:4px}
+.btn{background:var(--ac);color:var(--acink);border:0;border-radius:6px;padding:10px 18px;font:inherit;font-weight:600;cursor:pointer}
+.btn.alt{background:none;color:var(--ink);border:1px solid var(--line)}
+.btn:disabled{opacity:.5;cursor:default}
+.acts{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}
+.box{border-radius:8px;padding:10px 12px;margin:12px 0;font-size:15px}
+.bad{background:var(--badbg);color:var(--bad)}.ok{background:var(--okbg);color:var(--ok)}.warn{background:var(--warnbg);color:var(--warn)}
+.room{display:flex;align-items:center;justify-content:space-between;gap:10px;border:1px solid var(--line);border-radius:8px;padding:12px;margin-top:10px}
+.room.off{opacity:.55}.room small{color:var(--mut);display:block}
+.tag{font-size:13px;font-weight:600}
+a.lnk,button.lnk{background:none;border:0;color:var(--ac);text-decoration:underline;cursor:pointer;font:inherit;padding:0}
+.crumb{font-size:14px;color:var(--mut);margin-bottom:10px}
+dl{display:grid;grid-template-columns:130px 1fr;gap:6px 10px;margin:0}dt{color:var(--mut)}dd{margin:0;font-weight:600}
+.hint{font-size:13px;color:var(--mut);margin-top:12px}
+</style></head><body>
+<header><b>Pinjam Ruang</b><nav id="nav"></nav></header>
+<main id="app"></main>
+<script>
+var ROOMS=[{id:"A.201",cap:40,busy:[[8,10],[13,15]]},{id:"B.105",cap:25,busy:[[9,12]]},{id:"C.302",cap:60,busy:[[10,16]]},{id:"Lab 2",cap:30,busy:[[8,11],[14,16]]}];
+var S={view:"login",nim:"",q:{tgl:"",mulai:"9",selesai:"11",peserta:"20"},res:null,room:null,f:{keperluan:"",nama:"",ket:""},confirm:false,sub:null,cancelAsk:false};
+var d=new Date();d.setDate(d.getDate()+1);S.q.tgl=d.toISOString().slice(0,10);
+var $=function(i){return document.getElementById(i)};
+function free(r,a,b){return !r.busy.some(function(x){return a<x[1]&&b>x[0]})}
+function hrs(sel,v){var o="";for(var h=7;h<=18;h++)o+='<option value="'+h+'"'+(String(v)==String(h)?" selected":"")+">"+(h<10?"0":"")+h+".00</option>";return '<select id="'+sel+'">'+o+"</select>"}
+function go(v){S.view=v;S.confirm=false;S.cancelAsk=false;draw()}
+function nav(){if(S.view=="login"){$("nav").innerHTML="";return}
+$("nav").innerHTML=[["cari","Pinjam Ruang"],["status","Status Pengajuan"]].map(function(x){var on=(S.view==x[0]||(S.view=="form"&&x[0]=="cari"));return '<button class="'+(on?"on":"")+'" onclick="go(\''+x[0]+'\')">'+x[1]+"</button>"}).join("")+'<button onclick="S.nim=\'\';go(\'login\')">Keluar</button>'}
+function draw(){nav();var v=V[S.view]();$("app").innerHTML=v;window.scrollTo(0,0)}
+var V={};
+V.login=function(){var e=S.err||{};return '<h1>Masuk</h1><p class="sub">Gunakan akun kampus untuk meminjam ruang kelas.</p><div class="card">'+(e.top?'<div class="box bad" role="alert">'+e.top+"</div>":"")+
+'<label for="nim">NIM atau email kampus</label><input id="nim" value="'+S.nim+'" aria-invalid="'+!!e.nim+'" autocomplete="username">'+(e.nim?'<div class="err">'+e.nim+"</div>":"")+
+'<label for="pw">Kata sandi</label><input id="pw" type="password" aria-invalid="'+!!e.pw+'">'+(e.pw?'<div class="err">'+e.pw+"</div>":"")+
+'<div class="acts"><button class="btn" onclick="login()">Masuk</button><button class="lnk" onclick="S.err={top:\'Pemulihan kata sandi dikirim ke email kampus (simulasi).\'};draw()">Lupa kata sandi?</button></div>'+
+'<p class="hint">Untuk mencoba: isi NIM apa saja dan kata sandi kampus123. Kata sandi lain akan memunculkan kondisi gagal.</p></div>'};
+function login(){S.nim=$("nim").value.trim();var p=$("pw").value,e={};
+if(!S.nim)e.nim="NIM atau email kampus wajib diisi.";if(!p)e.pw="Kata sandi wajib diisi.";
+if(!e.nim&&!e.pw&&p!=="kampus123")e.top="Kata sandi salah. Periksa kembali atau pilih Lupa kata sandi.";
+S.err=Object.keys(e).length?e:null;if(S.err)draw();else go("cari")}
+function sq(){S.q.tgl=$("tgl").value;S.q.mulai=$("mu").value;S.q.selesai=$("se").value;S.q.peserta=$("pe").value}
+V.cari=function(){var q=S.q,e=S.qe||{},h="";
+if(S.res){var ok=S.res.filter(function(r){return r.ok}).length;
+h=S.res.length?'<div class="card"><b>Hasil untuk '+q.mulai+".00 sampai "+q.selesai+".00</b>"+S.res.map(function(r){return '<div class="room'+(r.ok?"":" off")+'"><div><b>Ruang '+r.id+"</b><small>Kapasitas "+r.cap+" orang</small></div>"+(r.ok?'<button class="btn" onclick="pick(\''+r.id+'\')">Pilih</button>':'<span class="tag">Terpakai</span>')+"</div>"}).join("")+"</div>":'<div class="box warn">Tidak ada ruang dengan kapasitas '+q.peserta+" orang atau lebih.</div>";
+if(S.res.length&&!ok){var alt=[],n=q.selesai-q.mulai;for(var a=7;a+n<=18&&alt.length<3;a++){if(ROOMS.some(function(r){return r.cap>=q.peserta&&free(r,a,a+n)}))alt.push(a)}
+h+='<div class="box warn" role="alert">Semua ruang sudah terpakai pada jam ini.'+(alt.length?" Coba jam lain:":"")+'<div class="acts">'+alt.map(function(a){return '<button class="btn alt" onclick="S.q.mulai='+a+";S.q.selesai="+(a+n)+';draw();find()">'+a+".00 sampai "+(a+n)+".00</button>"}).join("")+"</div></div>"}}
+return '<h1>Cari ruang kosong</h1><p class="sub">Pilih waktu dan jumlah peserta, sistem menampilkan ruang yang tersedia.</p><div class="card"><label for="tgl">Tanggal</label><input id="tgl" type="date" value="'+q.tgl+'" aria-invalid="'+!!e.tgl+'">'+(e.tgl?'<div class="err">'+e.tgl+"</div>":"")+
+'<div class="row"><div><label for="mu">Jam mulai</label>'+hrs("mu",q.mulai)+'</div><div><label for="se">Jam selesai</label>'+hrs("se",q.selesai)+"</div></div>"+(e.jam?'<div class="err">'+e.jam+"</div>":"")+
+'<label for="pe">Jumlah peserta</label><input id="pe" type="number" min="1" value="'+q.peserta+'" aria-invalid="'+!!e.pe+'">'+(e.pe?'<div class="err">'+e.pe+"</div>":"")+
+'<div class="acts"><button class="btn" onclick="find()">Cari ruang</button></div></div>'+h};
+function find(){sq();var q=S.q,e={};if(!q.tgl)e.tgl="Tanggal wajib dipilih.";if(+q.selesai<=+q.mulai)e.jam="Jam selesai harus setelah jam mulai.";if(!(+q.peserta>0))e.pe="Isi jumlah peserta minimal 1 orang.";
+S.qe=Object.keys(e).length?e:null;S.res=null;
+if(!S.qe)S.res=ROOMS.filter(function(r){return r.cap>=+q.peserta}).map(function(r){return{id:r.id,cap:r.cap,ok:free(r,+q.mulai,+q.selesai)}});draw()}
+function pick(id){S.room=id;S.fe=null;go("form")}
+V.form=function(){var f=S.f,e=S.fe||{},q=S.q;
+if(S.confirm)return '<h1>Periksa pengajuan</h1><div class="card"><dl><dt>Ruang</dt><dd>'+S.room+"</dd><dt>Tanggal</dt><dd>"+q.tgl+"</dd><dt>Jam</dt><dd>"+q.mulai+".00 sampai "+q.selesai+".00</dd><dt>Peserta</dt><dd>"+q.peserta+" orang</dd><dt>Kegiatan</dt><dd>"+esc(f.nama)+"</dd></dl><div class=\"box warn\">Ajukan peminjaman ini ke bagian sarana prasarana?</div><div class=\"acts\"><button class=\"btn\" onclick=\"submit()\">Ya, ajukan</button><button class=\"btn alt\" onclick=\"S.confirm=false;draw()\">Periksa lagi</button></div></div>";
+return '<div class="crumb"><button class="lnk" onclick="go(\'cari\')">Pinjam Ruang</button> &gt; Isi pengajuan</div><h1>Isi pengajuan</h1><div class="card"><dl><dt>Ruang</dt><dd>'+S.room+"</dd><dt>Tanggal</dt><dd>"+q.tgl+"</dd><dt>Jam</dt><dd>"+q.mulai+".00 sampai "+q.selesai+".00</dd><dt>Peserta</dt><dd>"+q.peserta+" orang</dd></dl></div>"+
+'<div class="card"><label for="kp">Keperluan</label><select id="kp" aria-invalid="'+!!e.kp+'"><option value="">Pilih keperluan</option>'+["Rapat organisasi","Kelas pengganti","Latihan presentasi","Lainnya"].map(function(o){return "<option"+(f.keperluan==o?" selected":"")+">"+o+"</option>"}).join("")+"</select>"+(e.kp?'<div class="err">'+e.kp+"</div>":"")+
+'<label for="nm">Nama kegiatan</label><input id="nm" value="'+esc(f.nama)+'" aria-invalid="'+!!e.nm+'">'+(e.nm?'<div class="err">'+e.nm+"</div>":"")+
+'<label for="kt">Keterangan tambahan (opsional)</label><textarea id="kt" rows="3">'+esc(f.ket)+'</textarea><div class="acts"><button class="btn" onclick="review()">Ajukan</button><button class="btn alt" onclick="sf();go(\'cari\')">Batal</button></div></div>'};
+function esc(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/"/g,"&quot;")}
+function sf(){if($("kp")){S.f.keperluan=$("kp").value;S.f.nama=$("nm").value;S.f.ket=$("kt").value}}
+function review(){sf();var e={};if(!S.f.keperluan)e.kp="Pilih salah satu keperluan.";if(!S.f.nama.trim())e.nm="Nama kegiatan wajib diisi.";
+S.fe=Object.keys(e).length?e:null;S.confirm=!S.fe;draw()}
+function submit(){var q=S.q;S.sub={no:"PR-"+(1000+Math.floor(Math.random()*9000)),room:S.room,tgl:q.tgl,jam:q.mulai+".00 sampai "+q.selesai+".00",peserta:q.peserta,nama:S.f.nama,st:"Menunggu persetujuan"};S.f={keperluan:"",nama:"",ket:""};S.res=null;go("status")}
+V.status=function(){var s=S.sub;if(!s)return '<h1>Status pengajuan</h1><div class="card">Belum ada pengajuan. <button class="lnk" onclick="go(\'cari\')">Cari ruang sekarang</button></div>';
+var c=s.st=="Dibatalkan";
+return (c?'<div class="box warn" role="status">Pengajuan dibatalkan. Ruang dilepas kembali.</div>':'<div class="box ok" role="status">Pengajuan berhasil dikirim. Nomor pengajuan '+s.no+".</div>")+'<h1>Status pengajuan</h1><div class="card"><dl><dt>Nomor</dt><dd>'+s.no+"</dd><dt>Ruang</dt><dd>"+s.room+"</dd><dt>Tanggal</dt><dd>"+s.tgl+"</dd><dt>Jam</dt><dd>"+s.jam+"</dd><dt>Kegiatan</dt><dd>"+esc(s.nama)+"</dd><dt>Status</dt><dd>"+s.st+"</dd></dl>"+
+(S.cancelAsk?'<div class="box warn">Batalkan pengajuan ini? Tindakan ini tidak dapat diulang.</div><div class="acts"><button class="btn" onclick="S.sub.st=\'Dibatalkan\';S.cancelAsk=false;draw()">Ya, batalkan</button><button class="btn alt" onclick="S.cancelAsk=false;draw()">Tidak</button></div>':'<div class="acts">'+(c?"":'<button class="btn alt" onclick="S.cancelAsk=true;draw()">Batalkan pengajuan</button>')+'<button class="btn" onclick="go(\'cari\')">Kembali ke pencarian</button></div>')+"</div>"};
+draw();
+</script></body></html>
